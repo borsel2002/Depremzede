@@ -45,16 +45,29 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache or network
 self.addEventListener('fetch', event => {
-  // Skip cross-origin requests
+  // Skip cross-origin requests that aren't in our allowed domains
   if (!event.request.url.startsWith(self.location.origin) && 
       !event.request.url.includes('unpkg.com/leaflet') && 
-      !event.request.url.includes('tile.openstreetmap.org')) {
+      !event.request.url.includes('tile.openstreetmap.org') &&
+      !event.request.url.includes('firestore.googleapis.com') &&
+      !event.request.url.includes('identitytoolkit.googleapis.com') &&
+      !event.request.url.includes('firebaseio.com') &&
+      !event.request.url.includes('securetoken.googleapis.com') &&
+      !event.request.url.includes('googleapis.com')) {
     return;
   }
   
-  // Skip Firebase API requests
+  // For OpenStreetMap tiles, bypass the service worker completely
+  if (event.request.url.includes('tile.openstreetmap.org')) {
+    return;
+  }
+  
+  // For Firebase API requests, bypass the service worker completely
   if (event.request.url.includes('firestore.googleapis.com') ||
-      event.request.url.includes('www.googleapis.com')) {
+      event.request.url.includes('identitytoolkit.googleapis.com') ||
+      event.request.url.includes('firebaseio.com') ||
+      event.request.url.includes('securetoken.googleapis.com') ||
+      event.request.url.includes('googleapis.com')) {
     return;
   }
   

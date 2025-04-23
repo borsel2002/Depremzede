@@ -39,7 +39,8 @@ const translations = {
     'offline-update-error': 'Cannot update report status while offline',
     'status-updated': 'Report status updated successfully',
     'update-error': 'Error updating report status',
-    'location-required': 'Your location is required to submit a report. Please allow location access.'
+    'location-required': 'Your location is required to submit a report. Please allow location access.',
+    'firebase-error': 'Unable to connect to the database. The app is running in offline mode.'
   },
   'tr': {
     'verified': 'Doğrulanmış Raporlar',
@@ -77,7 +78,8 @@ const translations = {
     'offline-update-error': 'Çevrimdışıyken rapor durumu güncellenemez',
     'status-updated': 'Rapor durumu başarıyla güncellendi',
     'update-error': 'Rapor durumu güncellenirken hata oluştu',
-    'location-required': 'Rapor göndermek için konumunuz gereklidir. Lütfen konum erişimine izin verin.'
+    'location-required': 'Rapor göndermek için konumunuz gereklidir. Lütfen konum erişimine izin verin.',
+    'firebase-error': 'Veritabanına bağlanılamıyor. Uygulama çevrimdışı modda çalışıyor.'
   },
   'ar': {
     'verified': 'تقارير مؤكدة',
@@ -115,7 +117,8 @@ const translations = {
     'offline-update-error': 'لا يمكن تحديث حالة التقرير أثناء عدم الاتصال',
     'status-updated': 'تم تحديث حالة التقرير بنجاح',
     'update-error': 'خطأ في تحديث حالة التقرير',
-    'location-required': 'موقعك مطلوب لإرسال تقرير. يرجى السماح بالوصول إلى الموقع.'
+    'location-required': 'موقعك مطلوب لإرسال تقرير. يرجى السماح بالوصول إلى الموقع.',
+    'firebase-error': 'غير قادر على الاتصال بقاعدة البيانات. التطبيق يعمل في وضع عدم الاتصال.'
   },
   'es': {
     'verified': 'Informes Verificados',
@@ -153,7 +156,8 @@ const translations = {
     'offline-update-error': 'No se puede actualizar el estado del informe mientras está desconectado',
     'status-updated': 'Estado del informe actualizado con éxito',
     'update-error': 'Error al actualizar el estado del informe',
-    'location-required': 'Se requiere su ubicación para enviar un informe. Por favor, permita el acceso a la ubicación.'
+    'location-required': 'Se requiere su ubicación para enviar un informe. Por favor, permita el acceso a la ubicación.',
+    'firebase-error': 'No se puede conectar a la base de datos. La aplicación se está ejecutando en modo sin conexión.'
   }
 };
 

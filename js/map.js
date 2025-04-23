@@ -71,43 +71,21 @@ function locateUser(callback) {
   );
 }
 
-// Load reports from Firestore
+// Load reports from local storage
 function loadReports() {
-  if (!isOnline) {
-    // If offline, use cached data
-    return;
-  }
-  
   // Clear existing markers
   clearMarkers();
   
-  // Get reports from Firestore
-  db.collection('reports')
-    .orderBy('timestamp', 'desc')
-    .limit(config.maxReports)
-    .get()
-    .then(function(querySnapshot) {
-      querySnapshot.forEach(function(doc) {
-        const report = {
-          id: doc.id,
-          ...doc.data()
-        };
-        
-        // Add marker to map
-        addMarkerToMap(report);
-      });
-      
-      // Apply filters
-      applyFilters();
-    })
-    .catch(function(error) {
-      console.error('Error getting reports:', error);
-    });
-    
-  // Also add any pending reports
-  pendingReports.forEach(report => {
+  // Get reports from localStorage
+  const reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Add markers for each report
+  reports.forEach(report => {
     addMarkerToMap(report);
   });
+  
+  // Apply filters
+  applyFilters();
 }
 
 // Add a marker to the map
@@ -126,7 +104,17 @@ function addMarkerToMap(report) {
   });
   
   // Create popup content
-  const timestamp = report.timestamp ? new Date(report.timestamp.seconds * 1000) : new Date();
+  let timestamp;
+  if (report.timestamp) {
+    if (typeof report.timestamp === 'string') {
+      timestamp = new Date(report.timestamp);
+    } else {
+      timestamp = new Date();
+    }
+  } else {
+    timestamp = new Date();
+  }
+  
   const timeString = timestamp.toLocaleString();
   
   const popupContent = `
@@ -142,10 +130,10 @@ function addMarkerToMap(report) {
           ${getTranslation('navigate')}
         </button>
         ${isRescueTeam() ? `
-          <button class="btn" onclick="updateReportStatus('${report.id}', 'verified')">
+          <button class="btn" onclick="verifyReport('${report.id}')">
             ${getTranslation('verify')}
           </button>
-          <button class="btn" onclick="updateReportStatus('${report.id}', 'resolved')">
+          <button class="btn" onclick="resolveReport('${report.id}')">
             ${getTranslation('resolve')}
           </button>
         ` : ''}
@@ -173,12 +161,8 @@ function clearMarkers() {
   markers = [];
 }
 
-// Apply filters based on checkboxes
-function applyFilters() {
-  const showVerified = document.getElementById('show-verified').checked;
-  const showUnverified = document.getElementById('show-unverified').checked;
-  const showResolved = document.getElementById('show-resolved').checked;
-  
+// Update marker visibility based on filters
+function updateMarkerVisibility(showVerified, showUnverified, showResolved) {
   markers.forEach(m => {
     if (
       (m.status === 'verified' && showVerified) ||
@@ -217,27 +201,39 @@ function navigateToLocation(lat, lng) {
 // Check if user is part of rescue team (placeholder)
 function isRescueTeam() {
   // This is a placeholder. In a real app, you would check user roles
-  return false;
+  // For demo purposes, we'll return true to allow status updates
+  return true;
 }
 
-// Update report status (for rescue teams)
-function updateReportStatus(reportId, newStatus) {
-  if (!isOnline) {
-    alert(getTranslation('offline-update-error'));
-    return;
-  }
+// Verify report
+function verifyReport(reportId) {
+  const reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  const reportIndex = reports.findIndex(report => report.id === reportId);
   
-  // Update in Firestore
-  db.collection('reports').doc(reportId).update({
-    status: newStatus,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  })
-  .then(() => {
-    alert(getTranslation('status-updated'));
+  if (reportIndex !== -1) {
+    reports[reportIndex].status = 'verified';
+    localStorage.setItem('reports', JSON.stringify(reports));
     loadReports();
-  })
-  .catch(error => {
-    console.error('Error updating report:', error);
-    alert(getTranslation('update-error'));
-  });
+  }
+}
+
+// Resolve report
+function resolveReport(reportId) {
+  const reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  const reportIndex = reports.findIndex(report => report.id === reportId);
+  
+  if (reportIndex !== -1) {
+    reports[reportIndex].status = 'resolved';
+    localStorage.setItem('reports', JSON.stringify(reports));
+    loadReports();
+  }
+}
+
+// Apply filters
+function applyFilters() {
+  const showVerified = document.getElementById('show-verified').checked;
+  const showUnverified = document.getElementById('show-unverified').checked;
+  const showResolved = document.getElementById('show-resolved').checked;
+  
+  updateMarkerVisibility(showVerified, showUnverified, showResolved);
 }

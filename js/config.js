@@ -1,18 +1,3 @@
-// Firebase configuration
-// Replace with your own Firebase project config when deploying
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
 // App configuration
 const config = {
   // Default map center (can be overridden by user location)
@@ -28,5 +13,7 @@ const config = {
   // Default language
   defaultLanguage: 'tr',
   // Supported languages
-  supportedLanguages: ['tr', 'en', 'ar', 'es']
+  supportedLanguages: ['tr', 'en', 'ar', 'es'],
+  // Use local storage instead of Firebase
+  useLocalStorage: true
 };

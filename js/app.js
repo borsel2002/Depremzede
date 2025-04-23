@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 let currentPosition = null;
 let isOnline = navigator.onLine;
 let pendingReports = [];
+let reportsData = [];
 
 // Initialize the application
 function initApp() {
@@ -17,17 +18,14 @@ function initApp() {
   // Initialize the map
   initMap();
   
-  // Load reports from Firestore
-  loadReports();
-  
   // Set up language
   initLanguage();
   
-  // Initialize Firebase Auth
-  initAuth();
-  
   // Check online status
   updateOnlineStatus();
+  
+  // Load reports from local storage
+  loadReports();
   
   // Set up periodic refresh
   setInterval(loadReports, config.refreshInterval);
@@ -99,49 +97,46 @@ function handleFormSubmit(e) {
   
   // Get form data
   const reportData = {
+    id: 'report-' + Date.now(),
     locationDescription: document.getElementById('location-description').value,
     numPeople: parseInt(document.getElementById('num-people').value),
     situation: document.getElementById('situation').value,
     contactInfo: document.getElementById('contact-info').value,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    timestamp: new Date().toISOString(),
     status: 'unverified',
     latitude: currentPosition.latitude,
     longitude: currentPosition.longitude
   };
   
-  // Check if we're online
-  if (isOnline) {
-    // Submit to Firestore
-    db.collection('reports').add(reportData)
-      .then(function(docRef) {
-        console.log('Document written with ID: ', docRef.id);
-        clearForm();
-        closeModal();
-        hideLoading();
-        alert(getTranslation('report-success'));
-        
-        // Refresh reports
-        loadReports();
-      })
-      .catch(function(error) {
-        console.error('Error adding document: ', error);
-        hideLoading();
-        alert(getTranslation('report-error'));
-      });
-  } else {
-    // Store locally for later submission
-    reportData.id = 'pending-' + Date.now();
-    pendingReports.push(reportData);
-    localStorage.setItem('pendingReports', JSON.stringify(pendingReports));
-    
-    clearForm();
-    closeModal();
-    hideLoading();
-    alert(getTranslation('report-offline'));
-    
-    // Add to map
-    addMarkerToMap(reportData);
-  }
+  // Store the report in local storage
+  storeReportLocally(reportData);
+  
+  // Clear form and close modal
+  clearForm();
+  closeModal();
+  hideLoading();
+  alert(getTranslation('report-success'));
+  
+  // Refresh reports
+  loadReports();
+}
+
+// Store report locally
+function storeReportLocally(reportData) {
+  // Get existing reports
+  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Add new report
+  reports.push(reportData);
+  
+  // Store back in localStorage
+  localStorage.setItem('reports', JSON.stringify(reports));
+  
+  // Add to current reports data
+  reportsData.push(reportData);
+  
+  // Add to map
+  addMarkerToMap(reportData);
 }
 
 // Close the modal
@@ -155,15 +150,6 @@ function clearForm() {
   document.getElementById('report-form').reset();
 }
 
-// Initialize Firebase Auth
-function initAuth() {
-  // We're using anonymous auth for simplicity
-  firebase.auth().signInAnonymously()
-    .catch(function(error) {
-      console.error('Auth error:', error);
-    });
-}
-
 // Update online status
 function updateOnlineStatus() {
   isOnline = navigator.onLine;
@@ -172,17 +158,8 @@ function updateOnlineStatus() {
   
   if (!isOnline) {
     offlineNotification.style.display = 'block';
-    
-    // Load pending reports from localStorage
-    const storedReports = localStorage.getItem('pendingReports');
-    if (storedReports) {
-      pendingReports = JSON.parse(storedReports);
-    }
   } else {
     offlineNotification.style.display = 'none';
-    
-    // Try to submit pending reports
-    submitPendingReports();
   }
 }
 
@@ -195,29 +172,31 @@ function createOfflineNotification() {
   return notification;
 }
 
-// Submit pending reports when back online
-function submitPendingReports() {
-  if (pendingReports.length === 0) return;
+// Load reports from localStorage
+function loadReports() {
+  // Clear existing markers
+  clearMarkers();
   
-  const reportsToSubmit = [...pendingReports];
-  pendingReports = [];
+  // Get reports from localStorage
+  reportsData = JSON.parse(localStorage.getItem('reports') || '[]');
   
-  Promise.all(reportsToSubmit.map(report => {
-    // Remove the temporary ID
-    const { id, ...reportData } = report;
-    return db.collection('reports').add(reportData);
-  }))
-  .then(() => {
-    localStorage.removeItem('pendingReports');
-    alert(getTranslation('pending-submitted'));
-    loadReports();
-  })
-  .catch(error => {
-    console.error('Error submitting pending reports:', error);
-    // Put the reports back in the pending list
-    pendingReports = [...pendingReports, ...reportsToSubmit];
-    localStorage.setItem('pendingReports', JSON.stringify(pendingReports));
+  // Add markers to map
+  reportsData.forEach(report => {
+    addMarkerToMap(report);
   });
+  
+  // Apply any active filters
+  applyFilters();
+}
+
+// Apply filters to the reports
+function applyFilters() {
+  const showVerified = document.getElementById('show-verified').checked;
+  const showUnverified = document.getElementById('show-unverified').checked;
+  const showResolved = document.getElementById('show-resolved').checked;
+  
+  // Update marker visibility based on filters
+  updateMarkerVisibility(showVerified, showUnverified, showResolved);
 }
 
 // Show loading indicator
@@ -239,5 +218,47 @@ function hideLoading() {
   const loading = document.querySelector('.loading');
   if (loading) {
     loading.style.display = 'none';
+  }
+}
+
+// Verify a report (for demonstration purposes)
+function verifyReport(reportId) {
+  // Get reports from localStorage
+  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Find and update the report
+  const reportIndex = reports.findIndex(r => r.id === reportId);
+  if (reportIndex !== -1) {
+    reports[reportIndex].status = 'verified';
+    
+    // Update localStorage
+    localStorage.setItem('reports', JSON.stringify(reports));
+    
+    // Update reportsData
+    reportsData = reports;
+    
+    // Refresh the map
+    loadReports();
+  }
+}
+
+// Mark a report as resolved
+function resolveReport(reportId) {
+  // Get reports from localStorage
+  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Find and update the report
+  const reportIndex = reports.findIndex(r => r.id === reportId);
+  if (reportIndex !== -1) {
+    reports[reportIndex].status = 'resolved';
+    
+    // Update localStorage
+    localStorage.setItem('reports', JSON.stringify(reports));
+    
+    // Update reportsData
+    reportsData = reports;
+    
+    // Refresh the map
+    loadReports();
   }
 }
