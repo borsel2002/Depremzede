@@ -15,7 +15,7 @@ The application uses the browser's localStorage API to store and retrieve report
 
 1. When a user submits a report, the data is stored in localStorage with a unique ID
 2. Reports are retrieved from localStorage when the application loads
-3. Each report contains:
+3. Each report contains the following properties:
    - `id` - Unique identifier
    - `locationDescription` - Text description of the location
    - `numPeople` - Estimated number of people trapped
