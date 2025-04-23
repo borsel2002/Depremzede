@@ -67,7 +67,18 @@ const translations = {
     'resolved-at': 'Resolved at',
     'verified-by': 'Verified by',
     'resolved-by': 'Resolved by',
-    'created-by': 'Created by'
+    'created-by': 'Created by',
+    'verification-votes': 'Verification Votes',
+    'resolution-votes': 'Resolution Votes',
+    'vote-to-verify': 'Vote to Verify',
+    'vote-to-resolve': 'Vote to Resolve',
+    'voted-to-verify': 'Already Voted to Verify',
+    'voted-to-resolve': 'Already Voted to Resolve',
+    'already-voted': 'You have already voted for this action',
+    'report-verified': 'Report has been verified by the community!',
+    'report-resolved': 'Report has been resolved by the community!',
+    'verification-vote-recorded': 'Your verification vote has been recorded ({current}/{required})',
+    'resolution-vote-recorded': 'Your resolution vote has been recorded ({current}/{required})'
   },
   'tr': {
     'app-title': 'Deprem Kurtarma Konum Belirleyici',
@@ -133,7 +144,18 @@ const translations = {
     'resolved-at': 'Çözülme Zamanı',
     'verified-by': 'Doğrulayan',
     'resolved-by': 'Çözen',
-    'created-by': 'Oluşturan'
+    'created-by': 'Oluşturan',
+    'verification-votes': 'Doğrulama Oyları',
+    'resolution-votes': 'Çözüm Oyları',
+    'vote-to-verify': 'Doğrulamak için Oy Ver',
+    'vote-to-resolve': 'Çözüldü Olarak İşaretlemek için Oy Ver',
+    'voted-to-verify': 'Doğrulama için Zaten Oy Verildi',
+    'voted-to-resolve': 'Çözüm için Zaten Oy Verildi',
+    'already-voted': 'Bu işlem için zaten oy verdiniz',
+    'report-verified': 'Rapor topluluk tarafından doğrulandı!',
+    'report-resolved': 'Rapor topluluk tarafından çözüldü olarak işaretlendi!',
+    'verification-vote-recorded': 'Doğrulama oyunuz kaydedildi ({current}/{required})',
+    'resolution-vote-recorded': 'Çözüm oyunuz kaydedildi ({current}/{required})'
   },
   'ar': {
     'app-title': 'محدد موقع الإنقاذ من الزلازل',
@@ -199,7 +221,18 @@ const translations = {
     'resolved-at': 'تم الحل في',
     'verified-by': 'تم التحقق بواسطة',
     'resolved-by': 'تم الحل بواسطة',
-    'created-by': 'تم الإنشاء بواسطة'
+    'created-by': 'تم الإنشاء بواسطة',
+    'verification-votes': 'أصوات التحقق',
+    'resolution-votes': 'أصوات الحل',
+    'vote-to-verify': 'التصويت للتحقق',
+    'vote-to-resolve': 'التصويت للحل',
+    'voted-to-verify': 'تم التصويت بالفعل للتحقق',
+    'voted-to-resolve': 'تم التصويت بالفعل للحل',
+    'already-voted': 'لقد قمت بالتصويت بالفعل لهذا الإجراء',
+    'report-verified': 'تم التحقق من التقرير من قبل المجتمع!',
+    'report-resolved': 'تم حل التقرير من قبل المجتمع!',
+    'verification-vote-recorded': 'تم تسجيل صوتك للتحقق ({current}/{required})',
+    'resolution-vote-recorded': 'تم تسجيل صوتك للحل ({current}/{required})'
   },
   'es': {
     'app-title': 'Localizador de Rescate de Terremotos',
@@ -265,7 +298,18 @@ const translations = {
     'resolved-at': 'Resuelto el',
     'verified-by': 'Verificado por',
     'resolved-by': 'Resuelto por',
-    'created-by': 'Creado por'
+    'created-by': 'Creado por',
+    'verification-votes': 'Votos de Verificación',
+    'resolution-votes': 'Votos de Resolución',
+    'vote-to-verify': 'Votar para Verificar',
+    'vote-to-resolve': 'Votar para Resolver',
+    'voted-to-verify': 'Ya Votado para Verificar',
+    'voted-to-resolve': 'Ya Votado para Resolver',
+    'already-voted': 'Ya has votado para esta acción',
+    'report-verified': '¡El informe ha sido verificado por la comunidad!',
+    'report-resolved': '¡El informe ha sido resuelto por la comunidad!',
+    'verification-vote-recorded': 'Tu voto de verificación ha sido registrado ({current}/{required})',
+    'resolution-vote-recorded': 'Tu voto de resolución ha sido registrado ({current}/{required})'
   }
 };
 

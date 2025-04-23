@@ -6,24 +6,29 @@ An open-source disaster-response web application that crowdsources real-time rep
 
 - Simple, mobile-friendly form for survivors or witnesses to submit locations
 - Live map showing verified and unverified reports
-- Serverless backend infrastructure to handle traffic spikes during disasters
-- Data validation tools (CAPTCHA, volunteer moderation, timestamp filters)
+- List view for easier browsing and searching of reports
+- Community verification system requiring 3 votes to verify a report
+- Community resolution system requiring 5 votes to mark a report as resolved
+- Peer-to-peer communication for distributed deployment
 - Offline functionality (PWA) for areas with poor connectivity
-- GDPR-compliant (no personal data stored)
+- No external API dependencies - fully self-contained application
+- Multi-language support (Turkish, English, Arabic, Spanish)
 
 ## Technical Stack
 
 - Frontend: HTML, CSS, JavaScript (Vanilla JS)
 - Map: Leaflet with OpenStreetMap
-- Backend: Firebase (Firestore, Authentication, Functions)
+- Local Storage: Browser localStorage API for data persistence
+- Peer-to-Peer: BroadcastChannel API for distributed communication
 - PWA capabilities for offline functionality
+- Express.js for local development server
 
 ## Getting Started
 
 1. Clone this repository
 2. Run `npm install` to install dependencies
-3. Set up Firebase project and update configuration
-4. Run `npm start` to start the development server
+3. Run `npm start` to start the development server
+4. Access the application at http://localhost:3000
 
 ## Contributing
 

@@ -74,6 +74,18 @@ function initP2PCommunication() {
           addRemoteReport(message.report);
         }
         break;
+      case 'VERIFY_VOTE':
+        // A verification vote from another node
+        if (message.nodeId !== nodeId) {
+          processVerificationVote(message.reportId, message.nodeId);
+        }
+        break;
+      case 'RESOLVE_VOTE':
+        // A resolution vote from another node
+        if (message.nodeId !== nodeId) {
+          processResolutionVote(message.reportId, message.nodeId);
+        }
+        break;
     }
   };
   
@@ -154,6 +166,96 @@ function addRemoteReport(report) {
   }
 }
 
+// Process a verification vote from another node
+function processVerificationVote(reportId, voterNodeId) {
+  // Get reports from localStorage
+  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Find the report
+  const reportIndex = reports.findIndex(r => r.id === reportId);
+  if (reportIndex === -1) return;
+  
+  // Get the report
+  const report = reports[reportIndex];
+  
+  // Initialize verification votes array if it doesn't exist
+  if (!report.verificationVotes) {
+    report.verificationVotes = [];
+  }
+  
+  // Check if this node has already voted
+  if (report.verificationVotes.includes(voterNodeId)) {
+    return; // Already voted
+  }
+  
+  // Add the vote
+  report.verificationVotes.push(voterNodeId);
+  
+  // Check if we have enough votes to verify the report
+  if (report.verificationVotes.length >= config.requiredVerifications && report.status !== 'verified') {
+    report.status = 'verified';
+    report.verifiedAt = new Date().toISOString();
+    report.verifiedBy = 'community'; // Multiple verifiers
+  }
+  
+  // Update the report
+  reports[reportIndex] = report;
+  
+  // Save to localStorage
+  localStorage.setItem('reports', JSON.stringify(reports));
+  
+  // Update reportsData
+  reportsData = reports;
+  
+  // Refresh the map and list
+  loadReports();
+}
+
+// Process a resolution vote from another node
+function processResolutionVote(reportId, voterNodeId) {
+  // Get reports from localStorage
+  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Find the report
+  const reportIndex = reports.findIndex(r => r.id === reportId);
+  if (reportIndex === -1) return;
+  
+  // Get the report
+  const report = reports[reportIndex];
+  
+  // Initialize resolution votes array if it doesn't exist
+  if (!report.resolutionVotes) {
+    report.resolutionVotes = [];
+  }
+  
+  // Check if this node has already voted
+  if (report.resolutionVotes.includes(voterNodeId)) {
+    return; // Already voted
+  }
+  
+  // Add the vote
+  report.resolutionVotes.push(voterNodeId);
+  
+  // Check if we have enough votes to resolve the report
+  if (report.resolutionVotes.length >= config.requiredResolutions && report.status !== 'resolved') {
+    report.status = 'resolved';
+    report.resolvedAt = new Date().toISOString();
+    report.resolvedBy = 'community'; // Multiple resolvers
+  }
+  
+  // Update the report
+  reports[reportIndex] = report;
+  
+  // Save to localStorage
+  localStorage.setItem('reports', JSON.stringify(reports));
+  
+  // Update reportsData
+  reportsData = reports;
+  
+  // Refresh the map and list
+  loadReports();
+}
+
 // Set up event listeners
 function setupEventListeners() {
   // Report button
@@ -193,14 +295,14 @@ function setupEventListeners() {
   // Report detail modal actions
   document.getElementById('detail-verify-btn').addEventListener('click', function() {
     if (currentReportId) {
-      verifyReport(currentReportId);
+      voteToVerifyReport(currentReportId);
       closeDetailModal();
     }
   });
   
   document.getElementById('detail-resolve-btn').addEventListener('click', function() {
     if (currentReportId) {
-      resolveReport(currentReportId);
+      voteToResolveReport(currentReportId);
       closeDetailModal();
     }
   });
@@ -306,7 +408,9 @@ function handleFormSubmit(e) {
     status: 'unverified',
     latitude: currentPosition.latitude,
     longitude: currentPosition.longitude,
-    nodeId: nodeId
+    nodeId: nodeId,
+    verificationVotes: [], // Initialize empty verification votes array
+    resolutionVotes: []    // Initialize empty resolution votes array
   };
   
   // Store the report in local storage
@@ -401,6 +505,16 @@ function loadReports() {
   
   // Get reports from localStorage
   reportsData = JSON.parse(localStorage.getItem('reports') || '[]');
+  
+  // Ensure all reports have verification and resolution votes arrays
+  reportsData.forEach(report => {
+    if (!report.verificationVotes) {
+      report.verificationVotes = [];
+    }
+    if (!report.resolutionVotes) {
+      report.resolutionVotes = [];
+    }
+  });
   
   // Add markers to map
   reportsData.forEach(report => {
@@ -551,6 +665,17 @@ function showReportDetails(reportId) {
     `;
   }
   
+  // Create verification and resolution vote information
+  const verificationVotes = report.verificationVotes ? report.verificationVotes.length : 0;
+  const resolutionVotes = report.resolutionVotes ? report.resolutionVotes.length : 0;
+  
+  const votesInfo = `
+    <div class="votes-info">
+      <p><strong>${getTranslation('verification-votes')}:</strong> ${verificationVotes}/${config.requiredVerifications}</p>
+      <p><strong>${getTranslation('resolution-votes')}:</strong> ${resolutionVotes}/${config.requiredResolutions}</p>
+    </div>
+  `;
+  
   // Create detail content
   const detailContent = document.getElementById('report-detail-content');
   detailContent.innerHTML = `
@@ -565,23 +690,42 @@ function showReportDetails(reportId) {
       <p><strong>${getTranslation('contact')}:</strong> ${report.contactInfo || '-'}</p>
       <p><strong>${getTranslation('created-at')}:</strong> ${formattedCreatedDate}</p>
       <p><strong>${getTranslation('created-by')}:</strong> ${report.nodeId || '-'}</p>
+      ${votesInfo}
       ${verifiedInfo}
       ${resolvedInfo}
     </div>
   `;
   
-  // Show/hide action buttons based on status
+  // Show/hide action buttons based on status and whether this node has already voted
   const verifyBtn = document.getElementById('detail-verify-btn');
   const resolveBtn = document.getElementById('detail-resolve-btn');
   
-  if (report.status === 'unverified') {
+  // Check if this node has already voted for verification
+  const hasVotedForVerification = report.verificationVotes && report.verificationVotes.includes(nodeId);
+  
+  // Check if this node has already voted for resolution
+  const hasVotedForResolution = report.resolutionVotes && report.resolutionVotes.includes(nodeId);
+  
+  // Show verify button if report is unverified and this node hasn't voted yet
+  if (report.status === 'unverified' && !hasVotedForVerification) {
     verifyBtn.style.display = 'block';
+    verifyBtn.textContent = getTranslation('vote-to-verify');
+  } else if (report.status === 'unverified' && hasVotedForVerification) {
+    verifyBtn.style.display = 'block';
+    verifyBtn.textContent = getTranslation('voted-to-verify');
+    verifyBtn.disabled = true;
   } else {
     verifyBtn.style.display = 'none';
   }
   
-  if (report.status !== 'resolved') {
+  // Show resolve button if report is not resolved and this node hasn't voted yet
+  if (report.status !== 'resolved' && !hasVotedForResolution) {
     resolveBtn.style.display = 'block';
+    resolveBtn.textContent = getTranslation('vote-to-resolve');
+  } else if (report.status !== 'resolved' && hasVotedForResolution) {
+    resolveBtn.style.display = 'block';
+    resolveBtn.textContent = getTranslation('voted-to-resolve');
+    resolveBtn.disabled = true;
   } else {
     resolveBtn.style.display = 'none';
   }
@@ -613,66 +757,128 @@ function hideLoading() {
   }
 }
 
-// Verify a report
-function verifyReport(reportId) {
+// Vote to verify a report
+function voteToVerifyReport(reportId) {
   // Get reports from localStorage
   let reports = JSON.parse(localStorage.getItem('reports') || '[]');
   
-  // Find and update the report
+  // Find the report
   const reportIndex = reports.findIndex(r => r.id === reportId);
-  if (reportIndex !== -1) {
-    reports[reportIndex].status = 'verified';
-    reports[reportIndex].verifiedAt = new Date().toISOString();
-    reports[reportIndex].verifiedBy = nodeId;
-    
-    // Update localStorage
-    localStorage.setItem('reports', JSON.stringify(reports));
-    
-    // Update reportsData
-    reportsData = reports;
-    
-    // Broadcast the update to other nodes
-    if (config.enableP2P && window.p2pChannel) {
-      window.p2pChannel.postMessage({
-        type: 'NEW_REPORT',
-        nodeId: nodeId,
-        report: reports[reportIndex]
-      });
-    }
-    
-    // Refresh the map and list
-    loadReports();
+  if (reportIndex === -1) return;
+  
+  // Get the report
+  const report = reports[reportIndex];
+  
+  // Initialize verification votes array if it doesn't exist
+  if (!report.verificationVotes) {
+    report.verificationVotes = [];
   }
+  
+  // Check if this node has already voted
+  if (report.verificationVotes.includes(nodeId)) {
+    alert(getTranslation('already-voted'));
+    return;
+  }
+  
+  // Add the vote
+  report.verificationVotes.push(nodeId);
+  
+  // Check if we have enough votes to verify the report
+  if (report.verificationVotes.length >= config.requiredVerifications && report.status !== 'verified') {
+    report.status = 'verified';
+    report.verifiedAt = new Date().toISOString();
+    report.verifiedBy = 'community'; // Multiple verifiers
+    
+    // Show notification
+    alert(getTranslation('report-verified'));
+  } else {
+    // Show notification about the vote
+    alert(getTranslation('verification-vote-recorded')
+      .replace('{current}', report.verificationVotes.length)
+      .replace('{required}', config.requiredVerifications));
+  }
+  
+  // Update the report
+  reports[reportIndex] = report;
+  
+  // Save to localStorage
+  localStorage.setItem('reports', JSON.stringify(reports));
+  
+  // Update reportsData
+  reportsData = reports;
+  
+  // Broadcast the vote to other nodes
+  if (config.enableP2P && window.p2pChannel) {
+    window.p2pChannel.postMessage({
+      type: 'VERIFY_VOTE',
+      nodeId: nodeId,
+      reportId: reportId
+    });
+  }
+  
+  // Refresh the map and list
+  loadReports();
 }
 
-// Mark a report as resolved
-function resolveReport(reportId) {
+// Vote to resolve a report
+function voteToResolveReport(reportId) {
   // Get reports from localStorage
   let reports = JSON.parse(localStorage.getItem('reports') || '[]');
   
-  // Find and update the report
+  // Find the report
   const reportIndex = reports.findIndex(r => r.id === reportId);
-  if (reportIndex !== -1) {
-    reports[reportIndex].status = 'resolved';
-    reports[reportIndex].resolvedAt = new Date().toISOString();
-    reports[reportIndex].resolvedBy = nodeId;
-    
-    // Update localStorage
-    localStorage.setItem('reports', JSON.stringify(reports));
-    
-    // Update reportsData
-    reportsData = reports;
-    
-    // Broadcast the update to other nodes
-    if (config.enableP2P && window.p2pChannel) {
-      window.p2pChannel.postMessage({
-        type: 'NEW_REPORT',
-        nodeId: nodeId,
-        report: reports[reportIndex]
-      });
-    }
-    
-    // Refresh the map and list
-    loadReports();
+  if (reportIndex === -1) return;
+  
+  // Get the report
+  const report = reports[reportIndex];
+  
+  // Initialize resolution votes array if it doesn't exist
+  if (!report.resolutionVotes) {
+    report.resolutionVotes = [];
   }
+  
+  // Check if this node has already voted
+  if (report.resolutionVotes.includes(nodeId)) {
+    alert(getTranslation('already-voted'));
+    return;
+  }
+  
+  // Add the vote
+  report.resolutionVotes.push(nodeId);
+  
+  // Check if we have enough votes to resolve the report
+  if (report.resolutionVotes.length >= config.requiredResolutions && report.status !== 'resolved') {
+    report.status = 'resolved';
+    report.resolvedAt = new Date().toISOString();
+    report.resolvedBy = 'community'; // Multiple resolvers
+    
+    // Show notification
+    alert(getTranslation('report-resolved'));
+  } else {
+    // Show notification about the vote
+    alert(getTranslation('resolution-vote-recorded')
+      .replace('{current}', report.resolutionVotes.length)
+      .replace('{required}', config.requiredResolutions));
+  }
+  
+  // Update the report
+  reports[reportIndex] = report;
+  
+  // Save to localStorage
+  localStorage.setItem('reports', JSON.stringify(reports));
+  
+  // Update reportsData
+  reportsData = reports;
+  
+  // Broadcast the vote to other nodes
+  if (config.enableP2P && window.p2pChannel) {
+    window.p2pChannel.postMessage({
+      type: 'RESOLVE_VOTE',
+      nodeId: nodeId,
+      reportId: reportId
+    });
+  }
+  
+  // Refresh the map and list
+  loadReports();
 }

@@ -18,6 +18,10 @@ const config = {
   useLocalStorage: true,
   // Enable peer-to-peer communication for distributed deployment
   enableP2P: true,
+  // Required number of verifications to mark a report as verified
+  requiredVerifications: 3,
+  // Required number of resolutions to mark a report as resolved
+  requiredResolutions: 5,
   // Map tile server URLs (for redundancy)
   mapTileSources: [
     {
