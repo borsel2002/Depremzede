@@ -19,7 +19,7 @@
 <body>
     <header>
         <div class="header-container">
-            <h1>Deprem Kurtarma Konum Belirleyici</h1>
+            <h1 data-i18n="app-title">Deprem Kurtarma Konum Belirleyici</h1>
             <div class="language-selector">
                 <select id="language-select">
                     <option value="tr" selected>Türkçe</option>
@@ -29,15 +29,19 @@
                 </select>
             </div>
         </div>
+        <div class="view-toggle">
+            <button id="map-view-btn" class="view-btn active" data-i18n="map-view">Harita Görünümü</button>
+            <button id="list-view-btn" class="view-btn" data-i18n="list-view">Liste Görünümü</button>
+        </div>
     </header>
 
     <main>
-        <div class="container full-map">
+        <div id="map-view" class="container full-map">
             <div class="map-container">
                 <div id="map"></div>
                 <div class="map-controls">
-                    <button id="locate-me" class="btn">Konumumu Bul</button>
-                    <button id="report-button" class="btn btn-primary">Enkaz Bildirimi Yap</button>
+                    <button id="locate-me" class="btn" data-i18n="locate-me">Konumumu Bul</button>
+                    <button id="report-button" class="btn btn-primary" data-i18n="report-button">Enkaz Bildirimi Yap</button>
                     <div class="filter-controls">
                         <label>
                             <input type="checkbox" id="show-verified" checked>
@@ -55,17 +59,43 @@
                 </div>
             </div>
         </div>
+
+        <div id="list-view" class="container" style="display: none;">
+            <div class="list-controls">
+                <div class="filter-controls">
+                    <label>
+                        <input type="checkbox" id="list-show-verified" checked>
+                        <span data-i18n="verified">Doğrulanmış Raporlar</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="list-show-unverified" checked>
+                        <span data-i18n="unverified">Doğrulanmamış Raporlar</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="list-show-resolved">
+                        <span data-i18n="resolved">Çözülmüş Raporlar</span>
+                    </label>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="search-reports" placeholder="Raporları Ara...">
+                </div>
+            </div>
+            <div class="reports-list" id="reports-list">
+                <!-- Reports will be loaded here dynamically -->
+                <div class="no-reports" data-i18n="no-reports">Henüz rapor bulunmamaktadır.</div>
+            </div>
+        </div>
     </main>
 
     <footer>
         <div class="container">
-            <p data-i18n="footer-text">Bu, deprem mağdurlarına yardım etmeyi amaçlayan açık kaynaklı bir projedir. <a href="https://github.com/yourusername/earthquake-rescue-locator" target="_blank">GitHub'da Katkıda Bulunun</a></p>
+            <p data-i18n="footer-text">Bu, deprem mağdurlarına yardım etmeyi amaçlayan açık kaynaklı bir projedir.</p>
         </div>
     </footer>
 
     <div id="report-modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close" data-i18n="close">&times;</span>
             <h2 data-i18n="report-heading">Enkaz Altında Kalan Kişiyi Bildir</h2>
             <form id="report-form">
                 <div class="form-group">
@@ -96,6 +126,21 @@
                     <button type="button" id="clear-form" class="btn" data-i18n="clear">Formu Temizle</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Report Detail Modal -->
+    <div id="report-detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-detail" data-i18n="close-detail">&times;</span>
+            <div id="report-detail-content">
+                <!-- Report details will be loaded here dynamically -->
+            </div>
+            <div class="report-actions">
+                <button id="detail-verify-btn" class="btn" data-i18n="verify">Doğrula</button>
+                <button id="detail-resolve-btn" class="btn" data-i18n="resolve">Çözüldü Olarak İşaretle</button>
+                <button id="detail-show-on-map-btn" class="btn" data-i18n="show-on-map">Haritada Göster</button>
+            </div>
         </div>
     </div>
 
