@@ -4,29 +4,39 @@
 if ('serviceWorker' in navigator) {
   // Unregister all service workers
   navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for(let registration of registrations) {
-      registration.unregister().then(function() {
-        console.log('ServiceWorker successfully unregistered');
+    if (registrations.length > 0) {
+      console.log(`Found ${registrations.length} service worker registrations to remove`);
+      
+      return Promise.all(
+        registrations.map(registration => {
+          return registration.unregister().then(() => {
+            console.log('ServiceWorker successfully unregistered');
+          });
+        })
+      );
+    } else {
+      console.log('No service workers found to unregister');
+    }
+  }).then(() => {
+    // Clear any service worker caches
+    if ('caches' in window) {
+      return caches.keys().then(cacheNames => {
+        if (cacheNames.length > 0) {
+          console.log(`Found ${cacheNames.length} caches to clear`);
+          
+          return Promise.all(
+            cacheNames.map(cacheName => caches.delete(cacheName))
+          ).then(() => {
+            console.log('All caches cleared successfully');
+          });
+        } else {
+          console.log('No caches found to clear');
+        }
       });
     }
   }).catch(function(error) {
-    console.log('ServiceWorker unregistration failed: ', error);
+    console.error('Error during service worker cleanup:', error);
   });
-  
-  // Clear any service worker caches
-  if ('caches' in window) {
-    caches.keys().then(function(cacheNames) {
-      return Promise.all(
-        cacheNames.map(function(cacheName) {
-          return caches.delete(cacheName);
-        })
-      );
-    }).then(function() {
-      console.log('Caches cleared');
-    }).catch(function(error) {
-      console.log('Cache clearing failed: ', error);
-    });
-  }
   
   console.log('Service workers disabled for this application');
 }

@@ -47,8 +47,8 @@ function generateNodeId() {
 
 // Initialize peer-to-peer communication
 function initP2PCommunication() {
-  // This is a simplified implementation
-  // In a real application, you would use WebRTC or a similar technology
+  // This is a simplified implementation using BroadcastChannel API
+  // In a real distributed environment, you would use WebRTC or similar technology
   
   // Listen for broadcast channel messages
   const channel = new BroadcastChannel('earthquake-rescue-p2p');
