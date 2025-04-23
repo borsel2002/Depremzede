@@ -15,5 +15,18 @@ const config = {
   // Supported languages
   supportedLanguages: ['tr', 'en', 'ar', 'es'],
   // Use local storage instead of Firebase
-  useLocalStorage: true
+  useLocalStorage: true,
+  // Enable peer-to-peer communication for distributed deployment
+  enableP2P: true,
+  // Map tile server URLs (for redundancy)
+  mapTileSources: [
+    {
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    },
+    {
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+    }
+  ]
 };

@@ -1,74 +1,234 @@
-// Map handling functionality
+// Map related functionality
 let map;
 let markers = [];
-let userMarker = null;
+let markerLayer;
+let currentLocationMarker;
+let tileLayer;
+let activeTileSourceIndex = 0;
 
-// Initialize the main map
+// Initialize the map
 function initMap() {
-  // Create map instance
+  // Create the map
   map = L.map('map').setView(config.defaultMapCenter, config.defaultZoom);
   
-  // Add OpenStreetMap tile layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: config.maxZoom
+  // Add the tile layer with fallback support
+  addTileLayer();
+  
+  // Add marker layer
+  markerLayer = L.layerGroup().addTo(map);
+  
+  // Try to locate the user
+  locateUser();
+  
+  // Add event listeners
+  map.on('click', onMapClick);
+}
+
+// Add tile layer with support for multiple sources
+function addTileLayer() {
+  // Remove existing tile layer if it exists
+  if (tileLayer) {
+    map.removeLayer(tileLayer);
+  }
+  
+  // Get the current tile source
+  const tileSource = config.mapTileSources[activeTileSourceIndex];
+  
+  // Add the tile layer
+  tileLayer = L.tileLayer(tileSource.url, {
+    maxZoom: config.maxZoom,
+    attribution: tileSource.attribution
   }).addTo(map);
   
-  // Add scale control
-  L.control.scale().addTo(map);
+  // Set up error handling to switch to alternate source if tiles fail to load
+  tileLayer.on('tileerror', function(error) {
+    console.warn('Tile error, switching to alternate source', error);
+    switchToAlternateTileSource();
+  });
+}
+
+// Switch to an alternate tile source
+function switchToAlternateTileSource() {
+  // Increment the index and wrap around if needed
+  activeTileSourceIndex = (activeTileSourceIndex + 1) % config.mapTileSources.length;
+  
+  // Add the new tile layer
+  addTileLayer();
 }
 
 // Locate the user
 function locateUser(callback) {
-  if (!navigator.geolocation) {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        // Store the position
+        currentPosition = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        
+        // Set the map view
+        map.setView([currentPosition.latitude, currentPosition.longitude], 15);
+        
+        // Add a marker for the user's location
+        addUserLocationMarker();
+        
+        // Call the callback if provided
+        if (callback && typeof callback === 'function') {
+          callback();
+        }
+      },
+      function(error) {
+        console.error('Error getting location:', error);
+        alert(getTranslation('location-error'));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  } else {
     alert(getTranslation('geolocation-not-supported'));
-    return;
+  }
+}
+
+// Add a marker for the user's location
+function addUserLocationMarker() {
+  // Remove existing marker if any
+  if (currentLocationMarker) {
+    map.removeLayer(currentLocationMarker);
   }
   
-  showLoading();
+  // Create a new marker
+  currentLocationMarker = L.marker([currentPosition.latitude, currentPosition.longitude], {
+    icon: L.divIcon({
+      className: 'user-location-marker',
+      html: '<div class="pulse"></div>',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    })
+  }).addTo(map);
   
-  navigator.geolocation.getCurrentPosition(
-    function(position) {
-      currentPosition = position.coords;
-      
-      // Center the map on the user's location
-      map.setView([position.coords.latitude, position.coords.longitude], 15);
-      
-      // Remove previous user marker if exists
-      if (userMarker) {
-        map.removeLayer(userMarker);
-      }
-      
-      // Add a marker at the user's location
-      userMarker = L.marker([position.coords.latitude, position.coords.longitude], {
-        icon: L.divIcon({
-          className: 'user-location-marker',
-          html: '<div class="user-location-marker"></div>',
-          iconSize: [12, 12],
-          iconAnchor: [6, 6]
-        })
-      }).addTo(map);
-      
-      userMarker.bindPopup(getTranslation('your-location')).openPopup();
-      
-      hideLoading();
-      
-      // Call the callback function if provided
-      if (typeof callback === 'function') {
-        callback();
-      }
-    },
-    function(error) {
-      console.error('Error getting location:', error);
-      alert(getTranslation('geolocation-error'));
-      hideLoading();
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
+  // Add a popup
+  currentLocationMarker.bindPopup(getTranslation('your-location')).openPopup();
+}
+
+// Handle map click
+function onMapClick(e) {
+  // Store the position
+  currentPosition = {
+    latitude: e.latlng.lat,
+    longitude: e.latlng.lng
+  };
+  
+  // Update the user location marker
+  addUserLocationMarker();
+}
+
+// Add a marker to the map for a report
+function addMarkerToMap(report) {
+  // Create marker
+  const marker = L.marker([report.latitude, report.longitude], {
+    icon: getMarkerIcon(report.status)
+  });
+  
+  // Add popup
+  marker.bindPopup(createPopupContent(report));
+  
+  // Add to marker layer
+  marker.addTo(markerLayer);
+  
+  // Store the marker with the report ID
+  markers.push({
+    id: report.id,
+    marker: marker,
+    status: report.status
+  });
+  
+  return marker;
+}
+
+// Get marker icon based on status
+function getMarkerIcon(status) {
+  let className = 'report-marker';
+  
+  switch (status) {
+    case 'verified':
+      className += ' verified';
+      break;
+    case 'resolved':
+      className += ' resolved';
+      break;
+    default:
+      className += ' unverified';
+  }
+  
+  return L.divIcon({
+    className: className,
+    html: '<div class="marker-inner"></div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+}
+
+// Create popup content for a report
+function createPopupContent(report) {
+  // Format the date
+  const date = new Date(report.timestamp);
+  const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  
+  // Create the content
+  let content = `
+    <div class="report-popup">
+      <h3>${getTranslation('report')}</h3>
+      <p><strong>${getTranslation('location')}:</strong> ${report.locationDescription}</p>
+      <p><strong>${getTranslation('people')}:</strong> ${report.numPeople}</p>
+      <p><strong>${getTranslation('situation')}:</strong> ${report.situation}</p>
+      <p><strong>${getTranslation('contact')}:</strong> ${report.contactInfo}</p>
+      <p><strong>${getTranslation('time')}:</strong> ${formattedDate}</p>
+      <p><strong>${getTranslation('status')}:</strong> <span class="status-${report.status}">${getTranslation(report.status)}</span></p>
+  `;
+  
+  // Add action buttons based on status
+  if (report.status === 'unverified') {
+    content += `<button class="verify-button" onclick="verifyReport('${report.id}')">${getTranslation('verify')}</button>`;
+  }
+  
+  if (report.status !== 'resolved') {
+    content += `<button class="resolve-button" onclick="resolveReport('${report.id}')">${getTranslation('resolve')}</button>`;
+  }
+  
+  content += '</div>';
+  
+  return content;
+}
+
+// Clear all markers from the map
+function clearMarkers() {
+  // Clear the marker layer
+  markerLayer.clearLayers();
+  
+  // Clear the markers array
+  markers = [];
+}
+
+// Update marker visibility based on filters
+function updateMarkerVisibility(showVerified, showUnverified, showResolved) {
+  // Clear the marker layer
+  markerLayer.clearLayers();
+  
+  // Add markers based on filters
+  markers.forEach(markerObj => {
+    const shouldShow = 
+      (markerObj.status === 'verified' && showVerified) ||
+      (markerObj.status === 'unverified' && showUnverified) ||
+      (markerObj.status === 'resolved' && showResolved);
+    
+    if (shouldShow) {
+      markerObj.marker.addTo(markerLayer);
     }
-  );
+  });
 }
 
 // Load reports from local storage
@@ -86,123 +246,6 @@ function loadReports() {
   
   // Apply filters
   applyFilters();
-}
-
-// Add a marker to the map
-function addMarkerToMap(report) {
-  // Skip if no coordinates
-  if (!report.latitude || !report.longitude) return;
-  
-  // Create marker
-  const marker = L.marker([report.latitude, report.longitude], {
-    icon: L.divIcon({
-      className: `${report.status}-marker`,
-      html: `<div class="${report.status}-marker"></div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6]
-    })
-  });
-  
-  // Create popup content
-  let timestamp;
-  if (report.timestamp) {
-    if (typeof report.timestamp === 'string') {
-      timestamp = new Date(report.timestamp);
-    } else {
-      timestamp = new Date();
-    }
-  } else {
-    timestamp = new Date();
-  }
-  
-  const timeString = timestamp.toLocaleString();
-  
-  const popupContent = `
-    <div class="report-popup">
-      <h3>${report.locationDescription}</h3>
-      <p><strong>${getTranslation('people')}:</strong> ${report.numPeople}</p>
-      <p><strong>${getTranslation('situation')}:</strong> ${report.situation}</p>
-      <p><strong>${getTranslation('status')}:</strong> ${getTranslation(report.status)}</p>
-      <p><strong>${getTranslation('reported')}:</strong> ${timeString}</p>
-      ${report.contactInfo ? `<p><strong>${getTranslation('contact')}:</strong> ${report.contactInfo}</p>` : ''}
-      <div class="popup-actions">
-        <button class="btn btn-primary" onclick="navigateToLocation(${report.latitude}, ${report.longitude})">
-          ${getTranslation('navigate')}
-        </button>
-        ${isRescueTeam() ? `
-          <button class="btn" onclick="verifyReport('${report.id}')">
-            ${getTranslation('verify')}
-          </button>
-          <button class="btn" onclick="resolveReport('${report.id}')">
-            ${getTranslation('resolve')}
-          </button>
-        ` : ''}
-      </div>
-    </div>
-  `;
-  
-  marker.bindPopup(popupContent);
-  
-  // Store the marker with its status
-  markers.push({
-    marker: marker,
-    status: report.status
-  });
-  
-  // Add to map
-  marker.addTo(map);
-}
-
-// Clear all markers from the map
-function clearMarkers() {
-  markers.forEach(m => {
-    map.removeLayer(m.marker);
-  });
-  markers = [];
-}
-
-// Update marker visibility based on filters
-function updateMarkerVisibility(showVerified, showUnverified, showResolved) {
-  markers.forEach(m => {
-    if (
-      (m.status === 'verified' && showVerified) ||
-      (m.status === 'unverified' && showUnverified) ||
-      (m.status === 'resolved' && showResolved)
-    ) {
-      if (!map.hasLayer(m.marker)) {
-        map.addLayer(m.marker);
-      }
-    } else {
-      if (map.hasLayer(m.marker)) {
-        map.removeLayer(m.marker);
-      }
-    }
-  });
-}
-
-// Navigate to location (open in maps app)
-function navigateToLocation(lat, lng) {
-  // Check if on mobile
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  
-  if (isMobile) {
-    // Use appropriate maps URL scheme
-    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      window.open(`maps://maps.apple.com/?q=${lat},${lng}`);
-    } else {
-      window.open(`geo:${lat},${lng}`);
-    }
-  } else {
-    // Use Google Maps on desktop
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`);
-  }
-}
-
-// Check if user is part of rescue team (placeholder)
-function isRescueTeam() {
-  // This is a placeholder. In a real app, you would check user roles
-  // For demo purposes, we'll return true to allow status updates
-  return true;
 }
 
 // Verify report
@@ -236,4 +279,29 @@ function applyFilters() {
   const showResolved = document.getElementById('show-resolved').checked;
   
   updateMarkerVisibility(showVerified, showUnverified, showResolved);
+}
+
+// Navigate to location (open in maps app)
+function navigateToLocation(lat, lng) {
+  // Check if on mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    // Use appropriate maps URL scheme
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.open(`maps://maps.apple.com/?q=${lat},${lng}`);
+    } else {
+      window.open(`geo:${lat},${lng}`);
+    }
+  } else {
+    // Use Google Maps on desktop
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`);
+  }
+}
+
+// Check if user is part of rescue team (placeholder)
+function isRescueTeam() {
+  // This is a placeholder. In a real app, you would check user roles
+  // For demo purposes, we'll return true to allow status updates
+  return true;
 }

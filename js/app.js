@@ -7,8 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Global variables
 let currentPosition = null;
 let isOnline = navigator.onLine;
-let pendingReports = [];
 let reportsData = [];
+let peerConnections = {};
+let nodeId = generateNodeId();
 
 // Initialize the application
 function initApp() {
@@ -29,6 +30,127 @@ function initApp() {
   
   // Set up periodic refresh
   setInterval(loadReports, config.refreshInterval);
+  
+  // Set up peer-to-peer communication if enabled
+  if (config.enableP2P) {
+    initP2PCommunication();
+  }
+  
+  console.log('Application initialized with node ID:', nodeId);
+}
+
+// Generate a unique node ID for this instance
+function generateNodeId() {
+  return 'node-' + Math.random().toString(36).substr(2, 9);
+}
+
+// Initialize peer-to-peer communication
+function initP2PCommunication() {
+  // This is a simplified implementation
+  // In a real application, you would use WebRTC or a similar technology
+  
+  // Listen for broadcast channel messages
+  const channel = new BroadcastChannel('earthquake-rescue-p2p');
+  
+  channel.onmessage = function(event) {
+    const message = event.data;
+    
+    // Handle different message types
+    switch(message.type) {
+      case 'SYNC_REQUEST':
+        // Another node is requesting our data
+        sendReportsToNode(message.nodeId);
+        break;
+      case 'SYNC_DATA':
+        // We received data from another node
+        if (message.nodeId !== nodeId) {
+          mergeReports(message.reports);
+        }
+        break;
+      case 'NEW_REPORT':
+        // A new report was created by another node
+        if (message.nodeId !== nodeId) {
+          addRemoteReport(message.report);
+        }
+        break;
+    }
+  };
+  
+  // Broadcast our presence and request data
+  channel.postMessage({
+    type: 'SYNC_REQUEST',
+    nodeId: nodeId
+  });
+  
+  // Store the channel for later use
+  window.p2pChannel = channel;
+}
+
+// Send our reports to another node
+function sendReportsToNode(targetNodeId) {
+  if (window.p2pChannel) {
+    window.p2pChannel.postMessage({
+      type: 'SYNC_DATA',
+      nodeId: nodeId,
+      reports: reportsData
+    });
+  }
+}
+
+// Merge reports from another node
+function mergeReports(remoteReports) {
+  if (!remoteReports || !Array.isArray(remoteReports)) return;
+  
+  let updated = false;
+  
+  remoteReports.forEach(remoteReport => {
+    // Check if we already have this report
+    const existingIndex = reportsData.findIndex(r => r.id === remoteReport.id);
+    
+    if (existingIndex === -1) {
+      // This is a new report
+      reportsData.push(remoteReport);
+      updated = true;
+    } else {
+      // We have this report, check if the remote one is newer
+      const existingReport = reportsData[existingIndex];
+      const existingTime = new Date(existingReport.timestamp).getTime();
+      const remoteTime = new Date(remoteReport.timestamp).getTime();
+      
+      if (remoteTime > existingTime) {
+        // Remote report is newer, update ours
+        reportsData[existingIndex] = remoteReport;
+        updated = true;
+      }
+    }
+  });
+  
+  if (updated) {
+    // Save the updated reports
+    localStorage.setItem('reports', JSON.stringify(reportsData));
+    
+    // Refresh the map
+    loadReports();
+  }
+}
+
+// Add a report received from another node
+function addRemoteReport(report) {
+  if (!report || !report.id) return;
+  
+  // Check if we already have this report
+  const existingIndex = reportsData.findIndex(r => r.id === report.id);
+  
+  if (existingIndex === -1) {
+    // This is a new report
+    reportsData.push(report);
+    
+    // Save to localStorage
+    localStorage.setItem('reports', JSON.stringify(reportsData));
+    
+    // Refresh the map
+    loadReports();
+  }
 }
 
 // Set up event listeners
@@ -97,7 +219,7 @@ function handleFormSubmit(e) {
   
   // Get form data
   const reportData = {
-    id: 'report-' + Date.now(),
+    id: 'report-' + Date.now() + '-' + nodeId,
     locationDescription: document.getElementById('location-description').value,
     numPeople: parseInt(document.getElementById('num-people').value),
     situation: document.getElementById('situation').value,
@@ -105,11 +227,21 @@ function handleFormSubmit(e) {
     timestamp: new Date().toISOString(),
     status: 'unverified',
     latitude: currentPosition.latitude,
-    longitude: currentPosition.longitude
+    longitude: currentPosition.longitude,
+    nodeId: nodeId
   };
   
   // Store the report in local storage
   storeReportLocally(reportData);
+  
+  // Broadcast the new report to other nodes
+  if (config.enableP2P && window.p2pChannel) {
+    window.p2pChannel.postMessage({
+      type: 'NEW_REPORT',
+      nodeId: nodeId,
+      report: reportData
+    });
+  }
   
   // Clear form and close modal
   clearForm();
@@ -221,7 +353,7 @@ function hideLoading() {
   }
 }
 
-// Verify a report (for demonstration purposes)
+// Verify a report
 function verifyReport(reportId) {
   // Get reports from localStorage
   let reports = JSON.parse(localStorage.getItem('reports') || '[]');
@@ -230,12 +362,23 @@ function verifyReport(reportId) {
   const reportIndex = reports.findIndex(r => r.id === reportId);
   if (reportIndex !== -1) {
     reports[reportIndex].status = 'verified';
+    reports[reportIndex].verifiedAt = new Date().toISOString();
+    reports[reportIndex].verifiedBy = nodeId;
     
     // Update localStorage
     localStorage.setItem('reports', JSON.stringify(reports));
     
     // Update reportsData
     reportsData = reports;
+    
+    // Broadcast the update to other nodes
+    if (config.enableP2P && window.p2pChannel) {
+      window.p2pChannel.postMessage({
+        type: 'NEW_REPORT',
+        nodeId: nodeId,
+        report: reports[reportIndex]
+      });
+    }
     
     // Refresh the map
     loadReports();
@@ -251,12 +394,23 @@ function resolveReport(reportId) {
   const reportIndex = reports.findIndex(r => r.id === reportId);
   if (reportIndex !== -1) {
     reports[reportIndex].status = 'resolved';
+    reports[reportIndex].resolvedAt = new Date().toISOString();
+    reports[reportIndex].resolvedBy = nodeId;
     
     // Update localStorage
     localStorage.setItem('reports', JSON.stringify(reports));
     
     // Update reportsData
     reportsData = reports;
+    
+    // Broadcast the update to other nodes
+    if (config.enableP2P && window.p2pChannel) {
+      window.p2pChannel.postMessage({
+        type: 'NEW_REPORT',
+        nodeId: nodeId,
+        report: reports[reportIndex]
+      });
+    }
     
     // Refresh the map
     loadReports();

@@ -1,4 +1,6 @@
-// Service worker registration is completely disabled
+// Service worker is completely disabled to avoid any API dependencies
+// This file ensures any existing service workers are unregistered
+
 if ('serviceWorker' in navigator) {
   // Unregister all service workers
   navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -7,6 +9,8 @@ if ('serviceWorker' in navigator) {
         console.log('ServiceWorker successfully unregistered');
       });
     }
+  }).catch(function(error) {
+    console.log('ServiceWorker unregistration failed: ', error);
   });
   
   // Clear any service worker caches
@@ -19,6 +23,10 @@ if ('serviceWorker' in navigator) {
       );
     }).then(function() {
       console.log('Caches cleared');
+    }).catch(function(error) {
+      console.log('Cache clearing failed: ', error);
     });
   }
+  
+  console.log('Service workers disabled for this application');
 }
