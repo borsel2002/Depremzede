@@ -1,0 +1,29 @@
+{
+  "name": "earthquake-rescue-locator",
+  "version": "1.0.0",
+  "description": "An open-source disaster-response web application for earthquake victims",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "earthquake",
+    "disaster",
+    "rescue",
+    "humanitarian",
+    "map",
+    "pwa"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

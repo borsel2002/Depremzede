@@ -1,0 +1,113 @@
+// Service Worker for offline functionality
+const CACHE_NAME = 'earthquake-rescue-v1';
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/css/styles.css',
+  '/js/app.js',
+  '/js/config.js',
+  '/js/i18n.js',
+  '/js/map.js',
+  '/js/sw-register.js',
+  '/manifest.json',
+  '/images/icon-192x192.png',
+  '/images/icon-512x512.png',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+];
+
+// Install event - cache static assets
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Opened cache');
+        return cache.addAll(STATIC_ASSETS);
+      })
+  );
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
+
+// Fetch event - serve from cache or network
+self.addEventListener('fetch', event => {
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin) && 
+      !event.request.url.includes('unpkg.com/leaflet') && 
+      !event.request.url.includes('tile.openstreetmap.org')) {
+    return;
+  }
+  
+  // Skip Firebase API requests
+  if (event.request.url.includes('firestore.googleapis.com') ||
+      event.request.url.includes('www.googleapis.com')) {
+    return;
+  }
+  
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+        
+        // Clone the request
+        const fetchRequest = event.request.clone();
+        
+        return fetch(fetchRequest).then(
+          response => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+            
+            // Clone the response
+            const responseToCache = response.clone();
+            
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+            
+            return response;
+          }
+        ).catch(() => {
+          // If the network is unavailable, try to return the offline page
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+        });
+      })
+  );
+});
+
+// Background sync for offline submissions
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-reports') {
+    event.waitUntil(syncReports());
+  }
+});
+
+// Function to sync pending reports
+function syncReports() {
+  // This would be implemented to read from IndexedDB
+  // and submit pending reports to the server
+  console.log('Syncing pending reports');
+  // In a real implementation, this would fetch from IndexedDB
+  // and submit to Firebase
+}

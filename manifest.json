@@ -1,0 +1,23 @@
+{
+  "name": "Earthquake Rescue Locator",
+  "short_name": "Rescue Map",
+  "description": "A tool to report and locate people trapped during earthquakes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1faee",
+  "theme_color": "#1d3557",
+  "icons": [
+    {
+      "src": "images/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
