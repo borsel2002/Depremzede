@@ -1,6 +1,9 @@
 // Service worker is completely disabled to avoid any API dependencies
 // This file ensures any existing service workers are unregistered
 
+// Set a flag to indicate service workers are disabled
+window.serviceWorkersDisabled = true;
+
 if ('serviceWorker' in navigator) {
   // Unregister all service workers
   navigator.serviceWorker.getRegistrations().then(function(registrations) {

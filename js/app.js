@@ -9,8 +9,13 @@ let currentPosition = null;
 let isOnline = navigator.onLine;
 let reportsData = [];
 let peerConnections = {};
-let nodeId = generateNodeId();
+let nodeId = localStorage.getItem('nodeId');
+if (!nodeId) {
+  nodeId = generateNodeId();
+  localStorage.setItem('nodeId', nodeId);
+}
 let currentReportId = null;
+let currentLanguage = 'tr'; // Default language
 
 // Initialize the application
 function initApp() {
@@ -42,7 +47,7 @@ function initApp() {
 
 // Generate a unique node ID for this instance
 function generateNodeId() {
-  return 'node-' + Math.random().toString(36).substr(2, 9);
+  return 'node-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
 }
 
 // Initialize peer-to-peer communication
@@ -168,15 +173,12 @@ function addRemoteReport(report) {
 
 // Process a verification vote from another node
 function processVerificationVote(reportId, voterNodeId) {
-  // Get reports from localStorage
-  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
-  
   // Find the report
-  const reportIndex = reports.findIndex(r => r.id === reportId);
+  const reportIndex = reportsData.findIndex(r => r.id === reportId);
   if (reportIndex === -1) return;
   
   // Get the report
-  const report = reports[reportIndex];
+  const report = reportsData[reportIndex];
   
   // Initialize verification votes array if it doesn't exist
   if (!report.verificationVotes) {
@@ -188,7 +190,6 @@ function processVerificationVote(reportId, voterNodeId) {
     return; // Already voted
   }
   
-  // Add the vote
   report.verificationVotes.push(voterNodeId);
   
   // Check if we have enough votes to verify the report
@@ -198,30 +199,24 @@ function processVerificationVote(reportId, voterNodeId) {
     report.verifiedBy = 'community'; // Multiple verifiers
   }
   
-  // Update the report
-  reports[reportIndex] = report;
+  // Update the report in the array
+  reportsData[reportIndex] = report;
   
   // Save to localStorage
-  localStorage.setItem('reports', JSON.stringify(reports));
+  localStorage.setItem('reports', JSON.stringify(reportsData));
   
-  // Update reportsData
-  reportsData = reports;
-  
-  // Refresh the map and list
-  loadReports();
+  // Refresh the map
+  updateMarkers();
 }
 
 // Process a resolution vote from another node
 function processResolutionVote(reportId, voterNodeId) {
-  // Get reports from localStorage
-  let reports = JSON.parse(localStorage.getItem('reports') || '[]');
-  
   // Find the report
-  const reportIndex = reports.findIndex(r => r.id === reportId);
+  const reportIndex = reportsData.findIndex(r => r.id === reportId);
   if (reportIndex === -1) return;
   
   // Get the report
-  const report = reports[reportIndex];
+  const report = reportsData[reportIndex];
   
   // Initialize resolution votes array if it doesn't exist
   if (!report.resolutionVotes) {
@@ -233,7 +228,6 @@ function processResolutionVote(reportId, voterNodeId) {
     return; // Already voted
   }
   
-  // Add the vote
   report.resolutionVotes.push(voterNodeId);
   
   // Check if we have enough votes to resolve the report
@@ -243,17 +237,14 @@ function processResolutionVote(reportId, voterNodeId) {
     report.resolvedBy = 'community'; // Multiple resolvers
   }
   
-  // Update the report
-  reports[reportIndex] = report;
+  // Update the report in the array
+  reportsData[reportIndex] = report;
   
   // Save to localStorage
-  localStorage.setItem('reports', JSON.stringify(reports));
+  localStorage.setItem('reports', JSON.stringify(reportsData));
   
-  // Update reportsData
-  reportsData = reports;
-  
-  // Refresh the map and list
-  loadReports();
+  // Refresh the map
+  updateMarkers();
 }
 
 // Set up event listeners
@@ -818,6 +809,11 @@ function voteToVerifyReport(reportId) {
   
   // Refresh the map and list
   loadReports();
+  
+  // Update the detail modal if it's open
+  if (currentReportId === reportId) {
+    showReportDetails(reportId);
+  }
 }
 
 // Vote to resolve a report
@@ -881,4 +877,9 @@ function voteToResolveReport(reportId) {
   
   // Refresh the map and list
   loadReports();
+  
+  // Update the detail modal if it's open
+  if (currentReportId === reportId) {
+    showReportDetails(reportId);
+  }
 }
